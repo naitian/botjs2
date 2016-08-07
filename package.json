@@ -1,0 +1,25 @@
+{
+  "name": "botjs2",
+  "version": "1.0.0",
+  "description": "Facebook Messenger Bot Framework for Node.js",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/naitian/botjs2.git"
+  },
+  "author": "Naitian Zhou",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/naitian/botjs2/issues"
+  },
+  "homepage": "https://github.com/naitian/hal#readme",
+  "dependencies": {
+    "facebook-chat-api": "^1.1.0",
+    "node-persist": "0.0.11",
+    "prompt": "^1.0.0",
+    "string-argv": "0.0.2"
+  }
+}

@@ -23,6 +23,45 @@ function ping (botAPI) {
   });
 }
 
+function tdata (botAPI) {
+  if (botAPI.args[0] === 'set') {
+    botAPI.setThreadData(botAPI.args[1], botAPI.args[2], (err) => {
+      if (err) {
+        console.trace(err);
+        return;
+      }
+    });
+  } else if (botAPI.args[0] === 'view') {
+    botAPI.getThreadData(botAPI.args[1], (err, val) => {
+      if (err) {
+        console.trace(err);
+        return;
+      }
+      botAPI.sendMessage(val);
+    });
+  }
+}
+
+function udata (botAPI, event) {
+  if (botAPI.args[0] === 'set') {
+    console.log(event.senderID);
+    botAPI.setUserData(event.senderID, botAPI.args[1], botAPI.args[2], (err) => {
+      if (err) {
+        console.error(err);
+        return;
+      }
+    });
+  } else if (botAPI.args[0] === 'view') {
+    botAPI.getUserData(event.senderID, botAPI.args[1], (err, val) => {
+      if (err) {
+        console.trace(err);
+        return;
+      }
+      botAPI.sendMessage(val);
+    });
+  }
+}
+
 function authenticate(credentials){
   login(credentials, function(err, api) {
     if(err) return console.trace(err);
@@ -36,6 +75,10 @@ function authenticate(credentials){
     exampleBot
       .command('!hello', hello, '!hello')
       .command('!ping', ping, '!ping <name>')
+      .command('!chatdata', tdata, `!chatdata set <key> <value>
+        !chatdata view <key>`)
+      .command('!userdata', udata, `!userdata set <key> <value>
+        !userdata view <key>`)
       .event('event', eventLogger);
   });
 }

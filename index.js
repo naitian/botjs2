@@ -101,7 +101,7 @@ module.exports = class Bot {
           return;
         }
         let threadInfo = val;
-        let botAPI = new BotAPI(event, event.threadID, this._api, threadInfo);
+        let botAPI = new BotAPI(event, event.threadID, this._api, threadInfo, storage);
         this._events.get(event.type).forEach((func) => {
           func(botAPI, event);
         });
@@ -121,7 +121,7 @@ module.exports = class Bot {
             return;
           }
           let threadInfo = val;
-          let botAPI = new BotAPI(event, event.threadID, this._api, threadInfo);
+          let botAPI = new BotAPI(event, event.threadID, this._api, threadInfo, storage);
           this._commands.get(scriptName).call(botAPI, event, this._api);
         });
       }

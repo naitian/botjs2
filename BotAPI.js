@@ -6,6 +6,7 @@ module.exports = class BotAPI {
     this.args = (event.body) ? splitargs(event.body).slice(1) : null;
     this.threadID = threadID;
 
+    this._storage = storage;
     this._api = api;
     this.thread = threadInfo;
     this._message = event;
@@ -41,18 +42,44 @@ module.exports = class BotAPI {
   }
 
   getThreadData (key, callback) {
-
+    this._storage.getItem(this.threadID + '-data-thread', (err, val) => {
+      if (!val[key])
+        err = 'Key does not exist';
+      return callback(err, val[key]);
+    });
   }
 
   setThreadData (key, value, callback) {
-
+    this._storage.getItem(this.threadID + '-data-thread', (err, val) => {
+      val = val || {};
+      val[key] = value;
+      this._storage.setItem(this.threadID + '-data-thread', val, (err) => {
+        return callback(err);
+      });
+    });
   }
 
   getUserData (userID, key, callback) {
-
+    this._storage.getItem(this.threadID + '-data-user', (err, val) => {
+      if (!val[userID])
+        err = 'User does not exist';
+      else if (!val[userID][key])
+        err = 'Key does not exist';
+      return callback(err, err ? null : val[userID][key]);
+    });
   }
 
   setUserData (userID, key, value, callback) {
-
+    console.log('called');
+    this._storage.getItem(this.threadID + '-data-user', (err, val) => {
+      console.log(val);
+      val = val || {};
+      console.log(val);
+      val[userID] = val[userID] || {};
+      val[userID][key] = value;
+      this._storage.setItem(this.threadID + '-data-user', val, (err) => {
+        return callback(err);
+      });
+    });
   }
 };

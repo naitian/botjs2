@@ -4,7 +4,6 @@ const fs = require('fs');
 const prompt = require('prompt');
 const Bot = require('./index.js');
 
-
 function hello (botAPI) {
   botAPI.sendMessage('hi');
 }

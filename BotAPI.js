@@ -43,6 +43,10 @@ module.exports = class BotAPI {
 
   getThreadData (key, callback) {
     this._storage.getItem(this.threadID + '-data-thread', (err, val) => {
+      if (!val) {
+        val = {};
+        this._storage.setItem(this.threadID + '-data-thread', val);
+      }
       if (!val[key])
         err = 'Key does not exist';
       return callback(err, val[key]);

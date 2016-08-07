@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/naitian/hal#readme",
   "dependencies": {
+    "async": "^2.0.1",
     "facebook-chat-api": "^1.1.0",
     "node-persist": "0.0.11",
     "prompt": "^1.0.0",

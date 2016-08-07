@@ -2,6 +2,7 @@
 const splitargs = require('string-argv');
 const storage = require('node-persist');
 const BotAPI = require('./BotAPI.js');
+const async = require('async');
 
 module.exports = class Bot {
 
@@ -10,6 +11,8 @@ module.exports = class Bot {
     this._api = api; // Keep reference to facebook-chat-api
     this._commands = new Map(); // Map of hooks
     this._events = new Map(); // Map of functions to run on events
+    this._cachingThreads = new Set();
+    this._postponedCalls = new Map();
 
     this.command.bind(this); // Add command
     this.event.bind(this); // Add event behavior
@@ -18,6 +21,7 @@ module.exports = class Bot {
     this._cache.bind(this); // Cache list of users
 
     this.command('!help', this.help.bind(this), '!help'); // Add !help command
+    this.event('event', this._cache.bind(this)); // Add !help command
 
     storage.initSync();
     this.listen();
@@ -79,10 +83,30 @@ module.exports = class Bot {
   }
 
   _run (text, event) {
+     if (this._cachingThreads.has(event.threadID)) {
+       if (this._postponedCalls.get(event.threadID))
+        this._postponedCalls.get(event.threadID).push(function(){
+          this._run(text, event);
+        });
+      else {
+        this._postponedCalls.set(event.threadID, [function(){
+          this._run(text, event);}]);
+      }
+      return;
+    }
     if (this._events.get(event.type)) {
-      this._events.get(event.type).forEach((func) => {
-        func(this._api, event);
+      storage.getItem(event.threadID, (err, val) => {
+        if (err) {
+          console.stacktrace(err);
+          return;
+        }
+        let threadInfo = val;
+        let botAPI = new BotAPI(event, event.threadID, this._api, threadInfo);
+        this._events.get(event.type).forEach((func) => {
+          func(botAPI, event);
+        });
       });
+      
     } 
     if (text == null || event.type !== 'message') {
       return;
@@ -97,118 +121,77 @@ module.exports = class Bot {
             return;
           }
           let threadInfo = val;
-          let botAPI = new BotAPI(text, event.threadID, this._api, threadInfo);
+          let botAPI = new BotAPI(event, event.threadID, this._api, threadInfo);
           this._commands.get(scriptName).call(botAPI, event, this._api);
         });
       }
     }
   }
 
-  _cache (api, event) {
-    if (event.type === 'event') 
-      console.log(event.logMessageType);
+  _cache (botAPI, event) {
+    let groupChange = false;
+
+    if (event.type === 'event')
+      groupChange = (event.logMessageType === 'log:unsubscribe' || // Person leaves Group
+          event.logMessageType === 'log:subscribe' || // Person joins Group
+          event.logMessageBody.indexOf('nickname') > -1); // Changes nickname
+
+    if (groupChange) {
+      console.log('Began Caching');
+      this._cachingThreads.add(botAPI.threadID);
+      storage.setItem(botAPI.threadID, {}, (err) => {
+        if (err) {
+          console.trace(err);
+          return;
+        }
+        this._api.getThreadInfo(botAPI.threadID, (err, info) => {
+          if (err) {
+            console.trace(err);
+            return;
+          } else {
+            this._api.getUserInfo(info.participantIDs, (err, users) => {
+              if (err) {
+                console.trace(err);
+                return;
+              }
+              async.eachOf(users, (value, key, callback) => {
+                storage.getItem(botAPI.threadID, (err, val) => {
+                  if (err) {
+                    callback(err);
+                    return;
+                  }
+                  val = val || {}; // If the Thread object doens't exist yet.
+                  val.users = val.users || {}; // If the participant exists, else new object
+                  val.users[key] = JSON.stringify(value);
+
+                  storage.setItem(botAPI.threadID, val, (err) => {
+                    if (err) {
+                      callback(err);
+                      return;
+                    }
+                    callback();
+                  });
+                });
+              }, (err) => {
+                if (err) {
+                  console.trace(err);
+                  return;
+                }
+                console.log('Finished caching');
+                this._cachingThreads.delete(botAPI.threadID);
+                console.log(this._postponedCalls.get(botAPI.threadID));
+                for (let func of this._postponedCalls.get(botAPI.threadID)) {
+                  console.log(func);
+                  func();
+                }
+                return;
+              });
+            });
+          }
+        });
+      });
+    } 
   }
-
-
-  // getUserByName(name, threadID, callback) {
-  //   storage.getItem('users', (err, users) => {
-  //     if (!users || !users[threadID]) {
-  //       this.botAPI.api.getThreadInfo(threadID, (err, res) => {
-  //         if(err)
-  //           return console.trace(err);
-  //         else {
-  //           let pid = res.participantIDs;
-  //           this.botAPI.api.getUserInfo(pid, (err, res) => {
-  //             if(err)
-  //               return console.trace(err);
-  //             else {
-  //               for (let id in res) {
-  //                 let user = res[id];
-  //                 user.id = id;
-  //                 if(user.name.toLowerCase().indexOf(name.toLowerCase()) > -1) {
-  //                   callback(null, res);
-  //                 }
-  //               } 
-  //             }
-  //             this.cacheUserList(threadID);
-  //           });
-  //         }
-  //       }); 
-  //     } else {
-  //       const thread = users[threadID];
-  //       let possible = [];
-  //       for (var user in thread) {
-  //         let match = thread[user].names.some((val) => {
-  //           return val.toLowerCase().indexOf(name.toLowerCase()) > -1;
-  //         });
-  //         if (match) {
-  //           let person = thread[user].account;
-  //           person.id = user;
-  //           possible.push(person);
-  //         }
-  //       }
-  //       if (possible.length > 0)
-  //         callback(null, possible);
-  //       else 
-  //         callback('No users found!', null);
-  //     }
-  //   });
-    
-  // }
-
-  // fillUserInfo(threadID) {
-  //   storage.getItem('users', (err, users) => {
-  //     if (err)
-  //       return console.trace(err);
-  //     this.botAPI.api.getThreadInfo(threadID, (err, res) => {
-  //       if (err)
-  //         return console.trace(err);
-  //       console.log('\tRetrieved Group Data');  
-  //       res.participantIDs.forEach((val) => {
-  //         storage.getItem('users', (err, users) => {
-  //           if (!users[threadID][val]) {
-  //             users[threadID][val] = {};
-  //             users[threadID][val].names = new Set();
-  //           }
-  //           else {
-  //             users[threadID][val].names = new Set(users[threadID][val].names);
-  //           }
-  //           if (res.nicknames[val]) {
-  //             users[threadID][val].names.add(res.nicknames[val]);
-  //           }
-
-  //           this.botAPI.api.getUserInfo(val, (err, user) => {
-  //             if (err)
-  //               return console.trace(err);
-  //             users[threadID][val].names.add(user[val].name);
-  //             users[threadID][val].names = Array.from(users[threadID][val].names);
-  //             users[threadID][val].account = user[val];
-  //             storage.setItem('users', users);
-  //             console.log('\t' + val + ' caching complete');
-  //           }); 
-  //         });
-  //       });
-  //     });
-  //   });
-  // }
-
-  cacheUserList(threadID) {
-    console.log('Caching Users');
-    storage.getItem('users', (err, users) => {
-      console.log('\tRetrieved Users Object');
-      if (err)
-        return console.trace(err);
-      if (!users) {
-        users = {};
-        users[threadID] = {};
-        storage.setItem('users', users);
-      }
-      this.fillUserInfo(threadID);
-    });
-
-  }
-
-
 };
 
 

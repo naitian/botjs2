@@ -9,6 +9,20 @@ function hello (botAPI) {
   botAPI.sendMessage('hi');
 }
 
+function eventLogger (botAPI, event) {
+  botAPI.sendMessage(`That was the ${event.logMessageType} event type`);
+}
+
+function ping (botAPI) {
+  botAPI.getUserByName(botAPI.args[0], (err, users) => {
+    if (err) {
+      botAPI.sendMessage(err);
+    } else {
+      botAPI.sendMessage(users.join('\n'));
+    }
+  });
+}
+
 function authenticate(credentials){
   login(credentials, function(err, api) {
     if(err) return console.trace(err);
@@ -20,7 +34,9 @@ function authenticate(credentials){
 
     const exampleBot = new Bot('examplebot', api);
     exampleBot
-      .command('!hello', hello, '!hello');
+      .command('!hello', hello, '!hello')
+      .command('!ping', ping, '!ping <name>')
+      .event('event', eventLogger);
   });
 }
 

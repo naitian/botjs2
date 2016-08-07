@@ -2,13 +2,13 @@
 const splitargs = require('string-argv');
 
 module.exports = class BotAPI {
-  constructor (message, threadID, api, threadInfo) {
-    this.args = splitargs(message.body).slice(1);
+  constructor (event, threadID, api, threadInfo, storage) {
+    this.args = (event.body) ? splitargs(event.body).slice(1) : null;
     this.threadID = threadID;
 
     this._api = api;
-    this._thread = threadInfo;
-    this._message = message;
+    this.thread = threadInfo;
+    this._message = event;
 
     this.sendMessage.bind(this);
   }
@@ -21,11 +21,16 @@ module.exports = class BotAPI {
     });
   }
 
-  getUserByName (name, callback) {
+  getUserByName (query, callback) {
     let possible = [];
-    for (let userID in this._thread.users) {
-      if (this._thread.users[userID].names.includes(name.toLowerCase())) {
-        possible.push(this._thread.users[userID]);
+    // console.log(this.thread);
+    for (let userID in this.thread.users) {
+      // console.log(userID);
+      let name = JSON.parse(this.thread.users[userID]).name;
+      console.log(name);
+      console.log(query);
+      if (name.toLowerCase().includes(query.toLowerCase())) {
+        possible.push(this.thread.users[userID]);
       }
     }
     if (possible.length < 1) {
@@ -33,5 +38,21 @@ module.exports = class BotAPI {
     } else {
       return callback(null, possible);
     }
+  }
+
+  getThreadData (key, callback) {
+
+  }
+
+  setThreadData (key, value, callback) {
+
+  }
+
+  getUserData (userID, key, callback) {
+
+  }
+
+  setUserData (userID, key, value, callback) {
+
   }
 };

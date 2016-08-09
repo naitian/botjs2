@@ -74,11 +74,8 @@ module.exports = class BotAPI {
   }
 
   setUserData (userID, key, value, callback) {
-    console.log('called');
     this._storage.getItem(this.threadID + '-data-user', (err, val) => {
-      console.log(val);
       val = val || {};
-      console.log(val);
       val[userID] = val[userID] || {};
       val[userID][key] = value;
       this._storage.setItem(this.threadID + '-data-user', val, (err) => {

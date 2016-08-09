@@ -43,7 +43,6 @@ function tdata (botAPI) {
 
 function udata (botAPI, event) {
   if (botAPI.args[0] === 'set') {
-    console.log(event.senderID);
     botAPI.setUserData(event.senderID, botAPI.args[1], botAPI.args[2], (err) => {
       if (err) {
         console.error(err);

@@ -22,23 +22,17 @@ module.exports = class BotAPI {
     });
   }
 
-  getUserByName (query, callback) {
+  getUserByName (query) {
     let possible = [];
-    // console.log(this.thread);
     for (let userID in this.thread.users) {
-      // console.log(userID);
       let name = JSON.parse(this.thread.users[userID]).name;
-      console.log(name);
-      console.log(query);
       if (name.toLowerCase().includes(query.toLowerCase())) {
-        possible.push(this.thread.users[userID]);
+        let user = JSON.parse(this.thread.users[userID]);
+        user.id = userID;
+        possible.push(user);
       }
     }
-    if (possible.length < 1) {
-      return callback('No users found', null);
-    } else {
-      return callback(null, possible);
-    }
+    return possible;
   }
 
   getThreadData (key, callback) {
@@ -65,17 +59,25 @@ module.exports = class BotAPI {
 
   getUserData (userID, key, callback) {
     this._storage.getItem(this.threadID + '-data-user', (err, val) => {
+      val = val || {};
       if (!val[userID])
         err = 'User does not exist';
       else if (!val[userID][key])
         err = 'Key does not exist';
+      let result = null;
+      if (!err) 
+        result = val[userID][key];
+    
       return callback(err, err ? null : val[userID][key]);
     });
   }
 
   setUserData (userID, key, value, callback) {
+    console.log('called');
     this._storage.getItem(this.threadID + '-data-user', (err, val) => {
+      console.log(val);
       val = val || {};
+      console.log(val);
       val[userID] = val[userID] || {};
       val[userID][key] = value;
       this._storage.setItem(this.threadID + '-data-user', val, (err) => {
